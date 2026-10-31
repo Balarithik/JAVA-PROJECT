@@ -1,0 +1,272 @@
+.root {
+    -fx-font-family: "Segoe UI";
+    -fx-background-color: #0b0f19;
+}
+
+.app-shell {
+    -fx-background-color: linear-gradient(to bottom right, #10182a, #0b0f19 55%, #101a20);
+}
+
+.top-navigation {
+    -fx-background-color: rgba(2, 6, 23, 0.94);
+    -fx-border-color: transparent transparent rgba(51, 65, 85, 0.8) transparent;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.brand-button {
+    -fx-background-color: transparent;
+    -fx-font-size: 19px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #a5b4fc;
+}
+
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #cbd5e1;
+    -fx-font-size: 12px;
+    -fx-padding: 9px 13px;
+    -fx-background-radius: 8px;
+}
+
+.nav-button:hover {
+    -fx-background-color: rgba(51, 65, 85, 0.65);
+    -fx-text-fill: white;
+}
+
+.identity-label {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 12px;
+}
+
+.footer-bar {
+    -fx-background-color: #020617;
+    -fx-border-color: rgba(51, 65, 85, 0.8) transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+}
+
+.footer-copy, .muted-copy, .body-copy {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 13px;
+}
+
+.landing-page {
+    -fx-background-color: transparent;
+}
+
+.eyebrow, .card-eyebrow, .section-divider {
+    -fx-text-fill: #818cf8;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.hero-title {
+    -fx-font-size: 48px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f8fafc;
+}
+
+.hero-copy {
+    -fx-font-size: 16px;
+    -fx-text-fill: #cbd5e1;
+}
+
+.glass-card {
+    -fx-background-color: rgba(15, 23, 42, 0.88);
+    -fx-background-radius: 18px;
+    -fx-border-color: rgba(99, 102, 241, 0.35);
+    -fx-border-radius: 18px;
+    -fx-border-width: 1px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.35), 24, 0.2, 0, 10);
+}
+
+.brand-title {
+    -fx-font-size: 19px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #67e8f9;
+}
+
+.page-title {
+    -fx-font-size: 30px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f8fafc;
+}
+
+.body-copy {
+    -fx-font-size: 14px;
+    -fx-text-fill: #94a3b8;
+    -fx-text-alignment: center;
+}
+
+.dark-scroll-pane, .dark-scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.light-scroll-pane, .light-scroll-pane > .viewport {
+    -fx-background-color: #f3f4f6;
+}
+
+.dashboard-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f8fafc;
+}
+
+.section-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f8fafc;
+}
+
+.dashboard-message {
+    -fx-text-fill: #6ee7b7;
+    -fx-font-size: 13px;
+}
+
+.metric-caption {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.metric-value {
+    -fx-text-fill: #67e8f9;
+    -fx-font-size: 23px;
+    -fx-font-weight: bold;
+}
+
+.status-value {
+    -fx-text-fill: #6ee7b7;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.danger-button {
+    -fx-background-color: #dc2626;
+    -fx-background-radius: 8px;
+    -fx-text-fill: white;
+    -fx-padding: 9px 14px;
+}
+
+.dashboard-chart {
+    -fx-background-color: rgba(15, 23, 42, 0.88);
+    -fx-padding: 12px;
+}
+
+.dashboard-chart .chart-title,
+.dashboard-chart .axis-label,
+.dashboard-chart .axis-tick-mark {
+    -fx-text-fill: #cbd5e1;
+    -fx-fill: #cbd5e1;
+}
+
+.dashboard-chart .chart-plot-background {
+    -fx-background-color: rgba(2, 6, 23, 0.5);
+}
+
+.dashboard-chart .chart-vertical-grid-lines,
+.dashboard-chart .chart-horizontal-grid-lines {
+    -fx-stroke: #334155;
+}
+
+.dark-table {
+    -fx-background-color: rgba(2, 6, 23, 0.55);
+    -fx-control-inner-background: rgba(2, 6, 23, 0.55);
+    -fx-table-cell-border-color: rgba(51, 65, 85, 0.55);
+    -fx-text-background-color: #cbd5e1;
+    -fx-background-radius: 8px;
+}
+
+.dark-table .column-header-background,
+.dark-table .column-header,
+.dark-table .filler {
+    -fx-background-color: #0f172a;
+    -fx-size: 36px;
+}
+
+.dark-table .column-header .label {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.customer-page {
+    -fx-background-color: #f3f4f6;
+}
+
+.customer-page .section-title {
+    -fx-text-fill: #111827;
+    -fx-font-size: 20px;
+}
+
+.customer-page .dashboard-title {
+    -fx-text-fill: #111827;
+    -fx-font-size: 30px;
+}
+
+.light-panel {
+    -fx-background-color: white;
+    -fx-background-radius: 11px;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.12), 12, 0.12, 0, 3);
+}
+
+.light-service-card {
+    -fx-background-color: white;
+    -fx-background-radius: 11px;
+    -fx-border-color: #e5e7eb;
+    -fx-border-radius: 11px;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.1), 10, 0.1, 0, 2);
+}
+
+.light-card-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #111827;
+}
+
+.light-muted {
+    -fx-text-fill: #6b7280;
+    -fx-font-size: 12px;
+}
+
+.light-metric {
+    -fx-background-color: #f9fafb;
+    -fx-background-radius: 8px;
+}
+
+.light-metric-value {
+    -fx-text-fill: #111827;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+
+.customer-button {
+    -fx-background-color: #2563eb;
+    -fx-background-radius: 8px;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 11px 14px;
+}
+
+.customer-button:disabled {
+    -fx-background-color: #9ca3af;
+    -fx-opacity: 1;
+}
+
+.light-table {
+    -fx-background-color: white;
+    -fx-control-inner-background: white;
+    -fx-table-cell-border-color: #e5e7eb;
+    -fx-text-background-color: #111827;
+}
+
+.light-table .column-header-background,
+.light-table .column-header,
+.light-table .filler {
+    -fx-background-color: #f9fafb;
+}
+
+.light-table .column-header .label {
+    -fx-text-fill: #4b5563;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
