@@ -73,13 +73,10 @@ public final class DatabaseInitializer {
                 "CREATE INDEX IF NOT EXISTS queues_service_status_joined_idx ON queues_queuetoken(service_id, status, joined_at)",
                 "CREATE INDEX IF NOT EXISTS queues_user_status_idx ON queues_queuetoken(user_id, status)",
                 "CREATE INDEX IF NOT EXISTS queues_status_joined_idx ON queues_queuetoken(status, joined_at)",
-                "CREATE TABLE IF NOT EXISTS smartqueue_session ("
-                    + "id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES accounts_user(id) ON DELETE CASCADE, "
-                    + "token_hash VARCHAR(64) NOT NULL UNIQUE, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, revoked_at TEXT NULL)",
-                "CREATE INDEX IF NOT EXISTS smartqueue_session_user_expiry_idx ON smartqueue_session(user_id, expires_at)",
                 "INSERT OR IGNORE INTO smartqueue_schema_version(version, applied_at) VALUES (1, CURRENT_TIMESTAMP)",
                 "INSERT OR IGNORE INTO smartqueue_schema_version(version, applied_at) VALUES (2, CURRENT_TIMESTAMP)",
-                "INSERT OR IGNORE INTO smartqueue_schema_version(version, applied_at) VALUES (3, CURRENT_TIMESTAMP)"
+                "INSERT OR IGNORE INTO smartqueue_schema_version(version, applied_at) VALUES (3, CURRENT_TIMESTAMP)",
+                "INSERT OR IGNORE INTO smartqueue_schema_version(version, applied_at) VALUES (4, CURRENT_TIMESTAMP)"
         );
     }
 }

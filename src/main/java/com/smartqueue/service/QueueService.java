@@ -2,6 +2,7 @@ package com.smartqueue.service;
 
 import com.smartqueue.database.DatabaseManager;
 import com.smartqueue.model.AppUser;
+import com.smartqueue.model.GuestQueueEntry;
 import com.smartqueue.model.QueueStatus;
 import com.smartqueue.model.QueueToken;
 import com.smartqueue.model.ServiceItem;
@@ -30,7 +31,7 @@ public final class QueueService {
         this.userRepository = userRepository;
     }
 
-    public QueueToken joinGuest(String name, int age, long serviceId) throws SQLException {
+    public GuestQueueEntry joinGuest(String name, int age, long serviceId) throws SQLException {
         String cleanedName = name == null ? "" : name.trim();
         if (cleanedName.length() < 2 || cleanedName.length() > 150) {
             throw new IllegalArgumentException("Enter a name between 2 and 150 characters.");
@@ -48,7 +49,8 @@ public final class QueueService {
             AppUser guest = userRepository.createGuest(connection, cleanedName, age);
             String tokenNumber = (service.prefix().isBlank() ? "A" : service.prefix().trim().toUpperCase())
                     + "-" + String.format("%03d", queueRepository.nextSequence(connection, service.id()));
-            return queueRepository.insert(connection, guest.id(), service, tokenNumber);
+            QueueToken token = queueRepository.insert(connection, guest.id(), service, tokenNumber);
+            return new GuestQueueEntry(guest, token);
         });
     }
 

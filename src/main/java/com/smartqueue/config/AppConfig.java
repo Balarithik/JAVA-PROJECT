@@ -25,7 +25,4 @@ public final class AppConfig {
         return dataDirectory().resolve("smartqueue.db");
     }
 
-    public static Path sessionPath() {
-        return dataDirectory().resolve("session.token");
-    }
 }

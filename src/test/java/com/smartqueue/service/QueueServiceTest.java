@@ -10,8 +10,6 @@ import com.smartqueue.model.UserRole;
 import com.smartqueue.repository.QueueRepository;
 import com.smartqueue.repository.ServiceRepository;
 import com.smartqueue.repository.UserRepository;
-import com.smartqueue.security.SessionStore;
-import com.smartqueue.security.PasswordHasher;
 import com.smartqueue.seed.DemoDataSeeder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +20,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +39,6 @@ final class QueueServiceTest {
     Path temporaryDirectory;
 
     private DatabaseManager databaseManager;
-    private AuthService authService;
     private QueueService queueService;
     private UserRepository userRepository;
     private long serviceId;
@@ -52,30 +50,14 @@ final class QueueServiceTest {
         userRepository = new UserRepository(databaseManager);
         QueueRepository queueRepository = new QueueRepository(databaseManager);
         ServiceRepository serviceRepository = new ServiceRepository(databaseManager);
-        authService = new AuthService(databaseManager, userRepository);
         queueService = new QueueService(databaseManager, queueRepository, serviceRepository, userRepository);
         serviceId = createService("General Consultation", "A", 5, true);
     }
 
     @Test
-    void publicRegistrationAlwaysCreatesUserAndVerifiesDjangoPasswordHash() throws Exception {
-        AppUser user = authService.register("Taylor Customer", "TAYLOR@example.com", "", "password123");
-
-        assertEquals(UserRole.USER, user.role());
-        assertEquals("taylor@example.com", user.email());
-        assertTrue(user.passwordHash().startsWith("pbkdf2_sha256$"));
-        assertTrue(PasswordHasher.verify("password123", user.passwordHash()));
-        assertEquals(user.id(), authService.login("Taylor@example.com", "password123").id());
-        assertThrows(IllegalArgumentException.class,
-                () -> authService.login("taylor@example.com", "wrong-password"));
-        assertThrows(IllegalArgumentException.class,
-                () -> authService.register("Taylor Customer", "taylor@example.com", "", "password123"));
-    }
-
-    @Test
     void joinUsesServiceSequenceFifoPositionAndWaitingFormula() throws Exception {
-        AppUser first = register("first@example.com", "First Customer");
-        AppUser second = register("second@example.com", "Second Customer");
+        AppUser first = createGuest("First Customer");
+        AppUser second = createGuest("Second Customer");
 
         QueueToken firstToken = queueService.join(first, serviceId);
         QueueToken secondToken = queueService.join(second, serviceId);
@@ -91,12 +73,12 @@ final class QueueServiceTest {
 
     @Test
     void kioskJoinStoresNameAndAgeWithoutCredentials() throws Exception {
-        QueueToken token = queueService.joinGuest("Mina Reyes", 34, serviceId);
-        AppUser guest = userRepository.findById(token.userId()).orElseThrow();
+        var joined = queueService.joinGuest("Mina Reyes", 34, serviceId);
+        QueueToken token = joined.token();
+        AppUser guest = joined.guest();
 
         assertEquals("Mina Reyes", guest.name());
         assertEquals(34, guest.age());
-        assertEquals("!", guest.passwordHash());
         assertEquals(QueueStatus.WAITING, token.status());
         assertTrue(queueService.activeToken(guest).isPresent());
         assertThrows(IllegalArgumentException.class, () -> queueService.joinGuest("M", 34, serviceId));
@@ -128,7 +110,7 @@ final class QueueServiceTest {
 
     @Test
     void staffLifecycleSkipRecallAndCustomerCancellationMatchBackendTransitions() throws Exception {
-        AppUser customer = register("customer@example.com", "Customer One");
+        AppUser customer = createGuest("Customer One");
         AppUser staff = createPrivilegedUser("staff@example.com", "Counter Staff", UserRole.STAFF);
         QueueToken waiting = queueService.join(customer, serviceId);
 
@@ -142,7 +124,7 @@ final class QueueServiceTest {
         assertThrows(IllegalStateException.class, () -> queueService.skip(staff, serving.id()));
         assertEquals(QueueStatus.COMPLETED, queueService.complete(staff, serving.id()).status());
 
-        AppUser secondCustomer = register("second@example.com", "Customer Two");
+        AppUser secondCustomer = createGuest("Customer Two");
         QueueToken second = queueService.join(secondCustomer, serviceId);
         QueueToken secondCalled = queueService.callNext(staff, serviceId, "Counter 4").orElseThrow();
         assertEquals(second.id(), secondCalled.id());
@@ -153,7 +135,7 @@ final class QueueServiceTest {
         assertNull(recalled.completedAt());
         assertEquals("Counter 5", recalled.counterNumber());
 
-        AppUser thirdCustomer = register("third@example.com", "Customer Three");
+        AppUser thirdCustomer = createGuest("Customer Three");
         QueueToken cancellable = queueService.join(thirdCustomer, serviceId);
         QueueToken cancelled = queueService.cancel(thirdCustomer, cancellable.id());
         assertEquals(QueueStatus.CANCELLED, cancelled.status());
@@ -161,8 +143,8 @@ final class QueueServiceTest {
 
     @Test
     void concurrentCallNextClaimsDistinctFifoTokens() throws Exception {
-        AppUser firstCustomer = register("one@example.com", "Customer One");
-        AppUser secondCustomer = register("two@example.com", "Customer Two");
+        AppUser firstCustomer = createGuest("Customer One");
+        AppUser secondCustomer = createGuest("Customer Two");
         AppUser firstStaff = createPrivilegedUser("staff-one@example.com", "Staff One", UserRole.STAFF);
         AppUser secondStaff = createPrivilegedUser("staff-two@example.com", "Staff Two", UserRole.STAFF);
         QueueToken first = queueService.join(firstCustomer, serviceId);
@@ -184,30 +166,14 @@ final class QueueServiceTest {
     }
 
     @Test
-    void sessionSurvivesServiceRecreationAndLogoutRevokesIt() throws Exception {
-        AppUser user = register("session@example.com", "Session User");
-        SessionService firstInstance = new SessionService(databaseManager, userRepository);
-        String token = firstInstance.createSession(user);
-        SessionStore store = new SessionStore(temporaryDirectory.resolve("session.token"));
-        store.saveToken(token);
-
-        SessionService restartedInstance = new SessionService(databaseManager, userRepository);
-        assertEquals(token, store.readToken());
-        assertEquals(user.id(), restartedInstance.restore(store.readToken()).orElseThrow().id());
-
-        restartedInstance.revoke(token);
-        assertTrue(restartedInstance.restore(token).isEmpty());
-        store.clear();
-        assertNull(store.readToken());
-    }
-
-    @Test
     void developmentSeederIsExplicitAndDoesNotDuplicateOrOverwriteRecords() throws Exception {
+        AppUser guest = queueService.joinGuest("Local Guest", 29, serviceId).guest();
         DemoDataSeeder seeder = new DemoDataSeeder(databaseManager);
         seeder.seed();
         try (Connection connection = databaseManager.openConnection();
              PreparedStatement statement = connection.prepareStatement(
-                     "UPDATE accounts_user SET name='Locally Customized' WHERE email='user@smartqueue.com'")) {
+                 "UPDATE accounts_user SET name='Locally Customized' WHERE id=?")) {
+            statement.setLong(1, guest.id());
             statement.executeUpdate();
         }
         seeder.seed();
@@ -219,17 +185,17 @@ final class QueueServiceTest {
              ResultSet serviceRows = services.executeQuery()) {
             userRows.next();
             serviceRows.next();
-            assertEquals(3, userRows.getInt(1));
+            assertEquals(1, userRows.getInt(1));
             assertEquals(5, serviceRows.getInt(1));
         }
-        assertEquals("Locally Customized", userRepository.findByEmail("user@smartqueue.com").orElseThrow().name());
+        assertEquals("Locally Customized", userRepository.findById(guest.id()).orElseThrow().name());
     }
 
     @Test
     void databaseInitializationPreservesRowsAndForeignKeysRejectOrphans() throws Exception {
-        AppUser user = register("persist@example.com", "Persist User");
+        AppUser user = createGuest("Persist User");
         new DatabaseInitializer(databaseManager).initialize();
-        assertEquals(user.id(), userRepository.findByEmail(user.email()).orElseThrow().id());
+        assertEquals(user.id(), userRepository.findById(user.id()).orElseThrow().id());
 
         try (Connection connection = databaseManager.openConnection();
              PreparedStatement insert = connection.prepareStatement(
@@ -244,7 +210,7 @@ final class QueueServiceTest {
 
     @Test
     void analyticsReportCompletedVolumeAndRejectInactiveService() throws Exception {
-        AppUser customer = register("analytics@example.com", "Analytics Customer");
+        AppUser customer = createGuest("Analytics Customer");
         AppUser admin = createPrivilegedUser("analytics-admin@example.com", "Queue Admin", UserRole.ADMIN);
         long inactiveServiceId = createService("Closed Desk", "X", 10, false);
         assertThrows(IllegalArgumentException.class, () -> queueService.join(customer, inactiveServiceId));
@@ -261,8 +227,8 @@ final class QueueServiceTest {
                 metric.label().equals("General Consultation") && metric.value() == 1));
     }
 
-    private AppUser register(String email, String name) throws Exception {
-        return authService.register(name, email, "", "password123");
+    private AppUser createGuest(String name) throws Exception {
+        return databaseManager.inWriteTransaction(connection -> userRepository.createGuest(connection, name, 25));
     }
 
     private AppUser createPrivilegedUser(String email, String name, UserRole role) throws Exception {
@@ -271,15 +237,18 @@ final class QueueServiceTest {
              PreparedStatement statement = connection.prepareStatement(
                      "INSERT INTO accounts_user(password,email,name,role,is_active,is_staff,is_superuser,created_at,updated_at) "
                              + "VALUES(?,?,?,?,1,0,0,?,?)")) {
-            statement.setString(1, PasswordHasher.hash("staff-password"));
+            statement.setString(1, "!");
             statement.setString(2, email);
             statement.setString(3, name);
             statement.setString(4, role.name());
             statement.setString(5, now);
             statement.setString(6, now);
             statement.executeUpdate();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                assertTrue(keys.next());
+                return userRepository.findById(keys.getLong(1)).orElseThrow();
+            }
         }
-        return userRepository.findByEmail(email).orElseThrow();
     }
 
     private long createService(String name, String prefix, int averageMinutes, boolean active) throws Exception {

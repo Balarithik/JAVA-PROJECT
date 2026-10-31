@@ -1,6 +1,6 @@
 package com.smartqueue;
 
-import com.smartqueue.controller.MainController;
+import com.smartqueue.controller.KioskController;
 import com.smartqueue.database.DatabaseInitializer;
 import com.smartqueue.database.DatabaseManager;
 import javafx.application.Application;
@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 
 public final class Main extends Application {
-    private MainController controller;
+    private KioskController controller;
 
     @Override
     public void start(Stage stage) throws IOException {
