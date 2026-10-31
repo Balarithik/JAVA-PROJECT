@@ -24,8 +24,24 @@ public final class DatabaseInitializer {
                     statement.execute(sql);
                 }
             }
+            ensureAgeColumn(connection);
             return null;
         });
+    }
+
+    private void ensureAgeColumn(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement();
+             var columns = statement.executeQuery("PRAGMA table_info(accounts_user)")) {
+            while (columns.next()) {
+                if ("age".equalsIgnoreCase(columns.getString("name"))) {
+                    return;
+                }
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE accounts_user ADD COLUMN age INTEGER NULL "
+                    + "CHECK(age IS NULL OR (age >= 0 AND age <= 130))");
+        }
     }
 
     private List<String> schemaStatements() {
@@ -34,7 +50,8 @@ public final class DatabaseInitializer {
                 "CREATE TABLE IF NOT EXISTS accounts_user ("
                         + "id INTEGER PRIMARY KEY AUTOINCREMENT, password VARCHAR(128) NOT NULL, last_login TEXT NULL, "
                         + "is_superuser INTEGER NOT NULL DEFAULT 0, email VARCHAR(255) NOT NULL UNIQUE, "
-                        + "name VARCHAR(150) NOT NULL, phone VARCHAR(25) NOT NULL DEFAULT '', "
+                        + "name VARCHAR(150) NOT NULL, age INTEGER NULL CHECK(age IS NULL OR (age >= 0 AND age <= 130)), "
+                        + "phone VARCHAR(25) NOT NULL DEFAULT '', "
                         + "role VARCHAR(20) NOT NULL DEFAULT 'USER', is_active INTEGER NOT NULL DEFAULT 1, "
                         + "is_staff INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
                 "CREATE INDEX IF NOT EXISTS accounts_user_role_idx ON accounts_user(role)",
@@ -61,7 +78,8 @@ public final class DatabaseInitializer {
                     + "token_hash VARCHAR(64) NOT NULL UNIQUE, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, revoked_at TEXT NULL)",
                 "CREATE INDEX IF NOT EXISTS smartqueue_session_user_expiry_idx ON smartqueue_session(user_id, expires_at)",
                 "INSERT OR IGNORE INTO smartqueue_schema_version(version, applied_at) VALUES (1, CURRENT_TIMESTAMP)",
-                "INSERT OR IGNORE INTO smartqueue_schema_version(version, applied_at) VALUES (2, CURRENT_TIMESTAMP)"
+                "INSERT OR IGNORE INTO smartqueue_schema_version(version, applied_at) VALUES (2, CURRENT_TIMESTAMP)",
+                "INSERT OR IGNORE INTO smartqueue_schema_version(version, applied_at) VALUES (3, CURRENT_TIMESTAMP)"
         );
     }
 }

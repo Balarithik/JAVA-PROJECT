@@ -94,7 +94,7 @@ public final class MainController {
         QueueRepository queueRepository = new QueueRepository(databaseManager);
         serviceRepository = new ServiceRepository(databaseManager);
         authService = new AuthService(databaseManager, userRepository);
-        queueService = new QueueService(databaseManager, queueRepository, serviceRepository);
+        queueService = new QueueService(databaseManager, queueRepository, serviceRepository, userRepository);
         analyticsService = new AnalyticsService(databaseManager, queueRepository);
         sessionService = new SessionService(databaseManager, userRepository);
         sessionStore = new SessionStore();

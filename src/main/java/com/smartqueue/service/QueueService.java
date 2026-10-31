@@ -9,6 +9,7 @@ import com.smartqueue.model.ServiceQueueSnapshot;
 import com.smartqueue.model.UserRole;
 import com.smartqueue.repository.QueueRepository;
 import com.smartqueue.repository.ServiceRepository;
+import com.smartqueue.repository.UserRepository;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -19,12 +20,36 @@ public final class QueueService {
     private final DatabaseManager databaseManager;
     private final QueueRepository queueRepository;
     private final ServiceRepository serviceRepository;
+    private final UserRepository userRepository;
 
     public QueueService(DatabaseManager databaseManager, QueueRepository queueRepository,
-                        ServiceRepository serviceRepository) {
+                        ServiceRepository serviceRepository, UserRepository userRepository) {
         this.databaseManager = databaseManager;
         this.queueRepository = queueRepository;
         this.serviceRepository = serviceRepository;
+        this.userRepository = userRepository;
+    }
+
+    public QueueToken joinGuest(String name, int age, long serviceId) throws SQLException {
+        String cleanedName = name == null ? "" : name.trim();
+        if (cleanedName.length() < 2 || cleanedName.length() > 150) {
+            throw new IllegalArgumentException("Enter a name between 2 and 150 characters.");
+        }
+        if (age < 0 || age > 130) {
+            throw new IllegalArgumentException("Enter an age between 0 and 130.");
+        }
+
+        return databaseManager.inWriteTransaction(connection -> {
+            ServiceItem service = serviceRepository.findById(connection, serviceId)
+                    .orElseThrow(() -> new IllegalArgumentException("Selected service does not exist."));
+            if (!service.active()) {
+                throw new IllegalArgumentException("This service department is currently inactive.");
+            }
+            AppUser guest = userRepository.createGuest(connection, cleanedName, age);
+            String tokenNumber = (service.prefix().isBlank() ? "A" : service.prefix().trim().toUpperCase())
+                    + "-" + String.format("%03d", queueRepository.nextSequence(connection, service.id()));
+            return queueRepository.insert(connection, guest.id(), service, tokenNumber);
+        });
     }
 
     public QueueToken join(AppUser user, long serviceId) throws SQLException {

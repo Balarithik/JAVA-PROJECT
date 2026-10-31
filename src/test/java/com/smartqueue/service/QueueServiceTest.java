@@ -53,7 +53,7 @@ final class QueueServiceTest {
         QueueRepository queueRepository = new QueueRepository(databaseManager);
         ServiceRepository serviceRepository = new ServiceRepository(databaseManager);
         authService = new AuthService(databaseManager, userRepository);
-        queueService = new QueueService(databaseManager, queueRepository, serviceRepository);
+        queueService = new QueueService(databaseManager, queueRepository, serviceRepository, userRepository);
         serviceId = createService("General Consultation", "A", 5, true);
     }
 
@@ -87,6 +87,43 @@ final class QueueServiceTest {
         assertEquals(1, secondWithEstimate.peopleAhead());
         assertEquals(5, secondWithEstimate.estimatedWaitTime());
         assertThrows(IllegalArgumentException.class, () -> queueService.join(second, serviceId));
+    }
+
+    @Test
+    void kioskJoinStoresNameAndAgeWithoutCredentials() throws Exception {
+        QueueToken token = queueService.joinGuest("Mina Reyes", 34, serviceId);
+        AppUser guest = userRepository.findById(token.userId()).orElseThrow();
+
+        assertEquals("Mina Reyes", guest.name());
+        assertEquals(34, guest.age());
+        assertEquals("!", guest.passwordHash());
+        assertEquals(QueueStatus.WAITING, token.status());
+        assertTrue(queueService.activeToken(guest).isPresent());
+        assertThrows(IllegalArgumentException.class, () -> queueService.joinGuest("M", 34, serviceId));
+        assertThrows(IllegalArgumentException.class, () -> queueService.joinGuest("Mina Reyes", -1, serviceId));
+        assertThrows(IllegalArgumentException.class, () -> queueService.joinGuest("Mina Reyes", 131, serviceId));
+    }
+
+    @Test
+    void ageColumnMigrationPreservesLegacyAccounts() throws Exception {
+        DatabaseManager legacyDatabase = new DatabaseManager(temporaryDirectory.resolve("legacy.db"));
+        try (Connection connection = legacyDatabase.openConnection();
+             var statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE accounts_user ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT, password VARCHAR(128) NOT NULL, last_login TEXT NULL, "
+                    + "is_superuser INTEGER NOT NULL DEFAULT 0, email VARCHAR(255) NOT NULL UNIQUE, "
+                    + "name VARCHAR(150) NOT NULL, phone VARCHAR(25) NOT NULL DEFAULT '', role VARCHAR(20) NOT NULL DEFAULT 'USER', "
+                    + "is_active INTEGER NOT NULL DEFAULT 1, is_staff INTEGER NOT NULL DEFAULT 0, "
+                    + "created_at TEXT NOT NULL, updated_at TEXT NOT NULL)");
+            statement.execute("INSERT INTO accounts_user(password,email,name,created_at,updated_at) "
+                    + "VALUES('!','legacy@example.invalid','Legacy Customer','2025-01-01T00:00:00Z','2025-01-01T00:00:00Z')");
+        }
+
+        new DatabaseInitializer(legacyDatabase).initialize();
+        AppUser legacyUser = new UserRepository(legacyDatabase).findByEmail("legacy@example.invalid").orElseThrow();
+
+        assertEquals("Legacy Customer", legacyUser.name());
+        assertNull(legacyUser.age());
     }
 
     @Test
