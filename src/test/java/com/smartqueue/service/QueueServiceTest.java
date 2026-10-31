@@ -102,10 +102,17 @@ final class QueueServiceTest {
         }
 
         new DatabaseInitializer(legacyDatabase).initialize();
-        AppUser legacyUser = new UserRepository(legacyDatabase).findByEmail("legacy@example.invalid").orElseThrow();
-
-        assertEquals("Legacy Customer", legacyUser.name());
-        assertNull(legacyUser.age());
+        try (Connection connection = legacyDatabase.openConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT name,age FROM accounts_user WHERE email=?")) {
+            statement.setString(1, "legacy@example.invalid");
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                assertEquals("Legacy Customer", result.getString("name"));
+                result.getInt("age");
+                assertTrue(result.wasNull());
+            }
+        }
     }
 
     @Test
@@ -236,7 +243,7 @@ final class QueueServiceTest {
         try (Connection connection = databaseManager.openConnection();
              PreparedStatement statement = connection.prepareStatement(
                      "INSERT INTO accounts_user(password,email,name,role,is_active,is_staff,is_superuser,created_at,updated_at) "
-                             + "VALUES(?,?,?,?,1,0,0,?,?)")) {
+                         + "VALUES(?,?,?,?,1,0,0,?,?)", Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, "!");
             statement.setString(2, email);
             statement.setString(3, name);

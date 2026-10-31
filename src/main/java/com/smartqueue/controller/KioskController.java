@@ -129,7 +129,7 @@ public final class KioskController {
         nameField.getStyleClass().add("glass-input");
         ageSpinner = new Spinner<>();
         ageSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 130, 18));
-        ageSpinner.setEditable(true);
+        ageSpinner.setEditable(false);
         ageSpinner.getStyleClass().add("glass-input");
         servicePicker = new ComboBox<>();
         servicePicker.setPromptText("Choose a service");
@@ -216,6 +216,7 @@ public final class KioskController {
             nameField.setDisable(true);
             ageSpinner.setDisable(true);
             servicePicker.setDisable(true);
+            joinButton.setDisable(true);
             newVisitorButton.setVisible(true);
             newVisitorButton.setManaged(true);
             renderToken(joined.token());
