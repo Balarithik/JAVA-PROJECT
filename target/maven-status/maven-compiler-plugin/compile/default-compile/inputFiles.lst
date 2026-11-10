@@ -16,6 +16,9 @@ E:\projects\Smart-Queue-Management-System-using-Java\src\main\java\com\smartqueu
 E:\projects\Smart-Queue-Management-System-using-Java\src\main\java\com\smartqueue\repository\QueueRepository.java
 E:\projects\Smart-Queue-Management-System-using-Java\src\main\java\com\smartqueue\repository\ServiceRepository.java
 E:\projects\Smart-Queue-Management-System-using-Java\src\main\java\com\smartqueue\repository\UserRepository.java
+E:\projects\Smart-Queue-Management-System-using-Java\src\main\java\com\smartqueue\security\PasswordHasher.java
 E:\projects\Smart-Queue-Management-System-using-Java\src\main\java\com\smartqueue\seed\DemoDataSeeder.java
+E:\projects\Smart-Queue-Management-System-using-Java\src\main\java\com\smartqueue\service\AdminService.java
 E:\projects\Smart-Queue-Management-System-using-Java\src\main\java\com\smartqueue\service\AnalyticsService.java
+E:\projects\Smart-Queue-Management-System-using-Java\src\main\java\com\smartqueue\service\AuthService.java
 E:\projects\Smart-Queue-Management-System-using-Java\src\main\java\com\smartqueue\service\QueueService.java

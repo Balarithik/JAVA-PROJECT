@@ -5,6 +5,7 @@ A JavaFX desktop application for managing service queues with customer, staff an
 ## Current features
 
 ### Customer / student
+
 - Join a service queue as a guest without creating an account.
 - Register and sign in with an email address and password.
 - Join a queue while signed in and retain token history in the account.
@@ -13,6 +14,7 @@ A JavaFX desktop application for managing service queues with customer, staff an
 - View the live service overview and recent token history.
 
 ### Staff / operator
+
 - Sign in using an account created by an administrator.
 - View waiting, called, serving and skipped tokens for a service.
 - Call the next waiting customer in FIFO order.
@@ -21,6 +23,7 @@ A JavaFX desktop application for managing service queues with customer, staff an
 - Prevent multiple active assignments to one operator and prevent one operator from changing another operator's token.
 
 ### Administrator
+
 - Create staff accounts and activate or deactivate staff accounts.
 - Add service departments and activate or deactivate services.
 - View average waiting time, daily completed-token throughput, hourly arrivals and service volume.
@@ -28,13 +31,13 @@ A JavaFX desktop application for managing service queues with customer, staff an
 
 ## Technology stack
 
-| Layer | Technology |
-| --- | --- |
-| Desktop UI | JavaFX 25, FXML and CSS |
-| Application logic | Java 25 |
-| Persistence | SQLite through JDBC (`sqlite-jdbc`) |
-| Build | Apache Maven |
-| Tests | JUnit 5 |
+| Layer             | Technology                          |
+| ----------------- | ----------------------------------- |
+| Desktop UI        | JavaFX 25, FXML and CSS             |
+| Application logic | Java 25                             |
+| Persistence       | SQLite through JDBC (`sqlite-jdbc`) |
+| Build             | Apache Maven                        |
+| Tests             | JUnit 5                             |
 
 > **Database note:** The accompanying project report describes a MySQL database (`smart_queue_db`). The current codebase still uses SQLite for local persistence. This README documents the implementation that is actually in this repository; a MySQL migration has not been completed.
 
@@ -49,6 +52,11 @@ Check the installed tools:
 java -version
 mvn -version
 ```
+
+run commands :
+$env:PATH += ";C:\Users\Public\Downloads\apache-maven-3.10.0-bin\apache-maven-3.10.0\bin"
+$env:SMARTQUEUE_ADMIN_EMAIL = "99250040058@klu.ac.in"
+$env:SMARTQUEUE_ADMIN_PASSWORD = "Bala@2007"
 
 ## First-time setup
 

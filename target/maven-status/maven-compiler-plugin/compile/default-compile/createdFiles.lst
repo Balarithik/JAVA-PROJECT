@@ -2,7 +2,6 @@ com\smartqueue\database\DatabaseManager$SqlWork.class
 com\smartqueue\controller\KioskController.class
 com\smartqueue\model\QueueAdvanceResult.class
 com\smartqueue\controller\KioskController$OperatorData.class
-com\smartqueue\controller\KioskController$OperatorAdvanceData.class
 com\smartqueue\model\QueueStatus.class
 com\smartqueue\model\Metric.class
 com\smartqueue\model\AppUser.class
@@ -11,6 +10,8 @@ com\smartqueue\repository\QueueRepository.class
 com\smartqueue\model\QueueToken.class
 com\smartqueue\model\AnalyticsSummary.class
 com\smartqueue\Main.class
+com\smartqueue\security\PasswordHasher.class
+com\smartqueue\service\AuthService.class
 com\smartqueue\model\GuestQueueEntry.class
 com\smartqueue\model\ServiceItem.class
 com\smartqueue\controller\KioskController$ColumnConstraintsSupport.class
@@ -23,6 +24,9 @@ com\smartqueue\model\ServiceQueueSnapshot.class
 com\smartqueue\service\QueueService.class
 com\smartqueue\seed\DemoDataSeeder.class
 com\smartqueue\model\UserRole.class
+com\smartqueue\repository\UserRepository$UserCredential.class
 com\smartqueue\controller\KioskController$KioskData.class
 com\smartqueue\config\AppConfig.class
+com\smartqueue\service\AdminService.class
 com\smartqueue\service\AnalyticsService.class
+com\smartqueue\controller\KioskController$AdminData.class
