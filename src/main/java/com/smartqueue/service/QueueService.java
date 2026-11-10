@@ -3,6 +3,7 @@ package com.smartqueue.service;
 import com.smartqueue.database.DatabaseManager;
 import com.smartqueue.model.AppUser;
 import com.smartqueue.model.GuestQueueEntry;
+import com.smartqueue.model.QueueAdvanceResult;
 import com.smartqueue.model.QueueStatus;
 import com.smartqueue.model.QueueToken;
 import com.smartqueue.model.ServiceItem;
@@ -108,6 +109,38 @@ public final class QueueService {
                 connection, serviceId, staff.id(), counter == null || counter.isBlank() ? "Counter 1" : counter.trim()));
     }
 
+    public QueueAdvanceResult advanceQueue(AppUser admin, long serviceId, String counter) throws SQLException {
+        requireRole(admin, UserRole.ADMIN);
+        String counterName = counter == null || counter.isBlank() ? "Counter 1" : counter.trim();
+        return databaseManager.inWriteTransaction(connection -> {
+            ServiceItem service = serviceRepository.findById(connection, serviceId)
+                    .orElseThrow(() -> new IllegalArgumentException("Selected service does not exist."));
+            if (!service.active()) {
+                throw new IllegalArgumentException("This service department is currently inactive.");
+            }
+
+            Optional<QueueToken> current = queueRepository.findCurrentForStaff(connection, admin.id());
+            if (current.isPresent() && current.get().service().id() != serviceId) {
+                throw new IllegalArgumentException("Complete the active token for "
+                        + current.get().service().name() + " before selecting another service.");
+            }
+
+            Optional<QueueToken> completed = Optional.empty();
+            if (current.isPresent()) {
+                QueueToken token = queueRepository.transition(connection, current.get().id(), admin.id(),
+                        QueueStatus.COMPLETED, List.of(QueueStatus.CALLED, QueueStatus.SERVING), null);
+                completed = Optional.of(token);
+            }
+            Optional<QueueToken> next = queueRepository.claimNext(connection, serviceId, admin.id(), counterName);
+            if (next.isPresent()) {
+                QueueToken serving = queueRepository.transition(connection, next.get().id(), admin.id(),
+                        QueueStatus.SERVING, List.of(QueueStatus.CALLED), null);
+                next = Optional.of(serving);
+            }
+            return new QueueAdvanceResult(completed, next);
+        });
+    }
+
     public QueueToken startServing(AppUser staff, long tokenId) throws SQLException {
         requireRole(staff, UserRole.STAFF, UserRole.ADMIN);
         return transition(tokenId, QueueStatus.SERVING, List.of(QueueStatus.CALLED), null);
@@ -157,4 +190,5 @@ public final class QueueService {
         }
         throw new SecurityException("Your account role cannot perform this queue action.");
     }
+
 }

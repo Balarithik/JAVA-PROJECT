@@ -16,14 +16,7 @@ public final class DemoDataSeeder {
 
     public void seed() throws Exception {
         databaseManager.inWriteTransaction(connection -> {
-            List<SeedService> services = List.of(
-                    new SeedService("General Consultation", "A", 5, "General walk-in consultation, advice, and inquiry services."),
-                    new SeedService("Billing & Payments", "B", 4, "Account settlement, fee processing, invoicing, and payment queries."),
-                    new SeedService("Customer Service", "C", 6, "General customer care, grievance resolution, and account upgrades."),
-                    new SeedService("Document Verification", "D", 8, "Identity verification, document clearance, and certificate validation."),
-                    new SeedService("Technical Support", "T", 10, "Hardware diagnostics, technical debugging, and system configuration.")
-            );
-            for (SeedService service : services) {
+            for (SeedService service : defaultServices()) {
                 try (PreparedStatement statement = connection.prepareStatement(
                         "INSERT OR IGNORE INTO services_service(name,prefix,description,average_service_time,is_active,created_at,updated_at) "
                                 + "VALUES(?,?,?,?,1,?,?)")) {
@@ -39,6 +32,21 @@ public final class DemoDataSeeder {
             }
             return null;
         });
+    }
+
+    public static List<SeedService> defaultServices() {
+        return List.of(
+                new SeedService("Hospital Registration", "H", 5,
+                        "Patient check-in, registration, and appointment confirmation services."),
+                new SeedService("Bank Teller", "B", 4,
+                        "Deposits, withdrawals, account inquiries, and teller assistance."),
+                new SeedService("Insurance Desk", "I", 6,
+                        "Claims processing, policy updates, and insurance support services."),
+                new SeedService("General Consultation", "A", 5,
+                        "General walk-in consultation, advice, and inquiry services."),
+                new SeedService("Customer Service", "C", 6,
+                        "General customer care, grievance resolution, and account upgrades.")
+        );
     }
 
     public static void main(String[] args) throws Exception {

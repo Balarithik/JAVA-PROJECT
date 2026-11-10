@@ -1,5 +1,8 @@
 com\smartqueue\database\DatabaseManager$SqlWork.class
 com\smartqueue\controller\KioskController.class
+com\smartqueue\model\QueueAdvanceResult.class
+com\smartqueue\controller\KioskController$OperatorData.class
+com\smartqueue\controller\KioskController$OperatorAdvanceData.class
 com\smartqueue\model\QueueStatus.class
 com\smartqueue\model\Metric.class
 com\smartqueue\model\AppUser.class

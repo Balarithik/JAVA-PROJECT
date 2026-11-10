@@ -3,6 +3,7 @@ package com.smartqueue;
 import com.smartqueue.controller.KioskController;
 import com.smartqueue.database.DatabaseInitializer;
 import com.smartqueue.database.DatabaseManager;
+import com.smartqueue.seed.DemoDataSeeder;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -19,8 +20,11 @@ public final class Main extends Application {
         DatabaseManager databaseManager = new DatabaseManager();
         try {
             new DatabaseInitializer(databaseManager).initialize();
+            new DemoDataSeeder(databaseManager).seed();
         } catch (SQLException ex) {
             throw new IllegalStateException("Unable to initialize the Smart Queue database.", ex);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Unable to seed the default services for the queue kiosk.", ex);
         }
 
         FXMLLoader loader = new FXMLLoader(Main.class.getResource("/fxml/main.fxml"));

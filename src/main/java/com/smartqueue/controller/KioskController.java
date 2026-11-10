@@ -3,10 +3,12 @@ package com.smartqueue.controller;
 import com.smartqueue.database.DatabaseManager;
 import com.smartqueue.model.AppUser;
 import com.smartqueue.model.GuestQueueEntry;
+import com.smartqueue.model.QueueAdvanceResult;
 import com.smartqueue.model.QueueStatus;
 import com.smartqueue.model.QueueToken;
 import com.smartqueue.model.ServiceItem;
 import com.smartqueue.model.ServiceQueueSnapshot;
+import com.smartqueue.model.UserRole;
 import com.smartqueue.repository.QueueRepository;
 import com.smartqueue.repository.ServiceRepository;
 import com.smartqueue.repository.UserRepository;
@@ -67,17 +69,25 @@ public final class KioskController {
     private DatabaseManager databaseManager;
     private QueueService queueService;
     private ServiceRepository serviceRepository;
+    private UserRepository userRepository;
     private TextField nameField;
     private Spinner<Integer> ageSpinner;
     private ComboBox<ServiceItem> servicePicker;
     private Button joinButton;
     private Button cancelButton;
     private Button newVisitorButton;
+    private Button navigationButton;
     private Label messageLabel;
     private VBox tokenPanel;
     private TableView<ServiceQueueSnapshot> queueTable;
+    private ComboBox<ServiceItem> operatorServicePicker;
+    private Label operatorMessageLabel;
+    private Label nowServingLabel;
+    private Button advanceQueueButton;
     private AppUser currentGuest;
+    private AppUser currentAdmin;
     private QueueToken currentToken;
+    private QueueToken operatorCurrentToken;
     private ScheduledFuture<?> refreshTask;
 
     @FXML
@@ -85,8 +95,8 @@ public final class KioskController {
         databaseManager = new DatabaseManager();
         QueueRepository queueRepository = new QueueRepository(databaseManager);
         serviceRepository = new ServiceRepository(databaseManager);
-        queueService = new QueueService(databaseManager, queueRepository, serviceRepository,
-                new UserRepository(databaseManager));
+        userRepository = new UserRepository(databaseManager);
+        queueService = new QueueService(databaseManager, queueRepository, serviceRepository, userRepository);
         root.setTop(buildHeader());
         root.setBottom(buildFooter());
         showKiosk();
@@ -103,9 +113,12 @@ public final class KioskController {
         brand.getStyleClass().add("brand-button");
         Label mode = new Label("CUSTOMER QUEUE KIOSK");
         mode.getStyleClass().add("identity-label");
+        navigationButton = new Button("Operator Dashboard");
+        navigationButton.getStyleClass().add("nav-button");
+        navigationButton.setOnAction(event -> showOperatorDashboard());
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox header = new HBox(18, brand, spacer, mode);
+        HBox header = new HBox(18, brand, spacer, navigationButton, mode);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(12, 32, 12, 32));
         header.getStyleClass().add("top-navigation");
@@ -124,6 +137,8 @@ public final class KioskController {
 
     private void showKiosk() {
         stopLiveRefresh();
+        navigationButton.setText("Operator Dashboard");
+        navigationButton.setOnAction(event -> showOperatorDashboard());
         nameField = new TextField();
         nameField.setPromptText("Full name");
         nameField.getStyleClass().add("glass-input");
@@ -187,6 +202,151 @@ public final class KioskController {
         setPage(page);
         loadKioskData();
         refreshTask = refreshExecutor.scheduleWithFixedDelay(this::refreshQueueStatus, 5, 5, TimeUnit.SECONDS);
+    }
+
+    private void showOperatorDashboard() {
+        stopLiveRefresh();
+        navigationButton.setText("Customer Kiosk");
+        navigationButton.setOnAction(event -> showKiosk());
+        operatorServicePicker = new ComboBox<>();
+        operatorServicePicker.setPromptText("Select a service");
+        operatorServicePicker.getStyleClass().add("glass-input");
+        operatorServicePicker.setMaxWidth(Double.MAX_VALUE);
+        operatorServicePicker.setOnAction(event -> updateOperatorActionState());
+        nowServingLabel = new Label("Loading current service...");
+        nowServingLabel.getStyleClass().add("metric-value");
+        nowServingLabel.setWrapText(true);
+        operatorMessageLabel = new Label("Loading the operator dashboard...");
+        operatorMessageLabel.getStyleClass().add("dashboard-message");
+        operatorMessageLabel.setWrapText(true);
+        advanceQueueButton = new Button("Serve Next Customer");
+        advanceQueueButton.getStyleClass().add("primary-button");
+        advanceQueueButton.setDisable(true);
+        advanceQueueButton.setOnAction(event -> advanceQueue());
+
+        VBox controls = new VBox(14,
+                sectionHeader("Queue Controls"),
+                fieldLabel("Service"),
+                operatorServicePicker,
+                fieldLabel("Current Customer"),
+                nowServingLabel,
+                advanceQueueButton,
+                operatorMessageLabel);
+        controls.setPadding(new Insets(24));
+        controls.setMaxWidth(620);
+        controls.getStyleClass().add("glass-card");
+
+        queueTable = queueOverviewTable();
+        VBox overviewPanel = new VBox(14, sectionHeader("Current Queue Status"), queueTable);
+        overviewPanel.setPadding(new Insets(24));
+        overviewPanel.getStyleClass().add("glass-card");
+
+        VBox page = new VBox(20,
+                headingBlock("Queue Operator Dashboard",
+                        "Complete the current service and automatically begin serving the next waiting customer."),
+                controls, overviewPanel);
+        page.setAlignment(Pos.TOP_CENTER);
+        page.setPadding(new Insets(28, 36, 40, 36));
+        setPage(page);
+        loadOperatorData();
+    }
+
+    private void loadOperatorData() {
+        runAsync(() -> {
+            List<ServiceItem> services = serviceRepository.list(true);
+            List<ServiceQueueSnapshot> status = queueService.overview();
+            AppUser admin = userRepository.findFirstActiveAdmin()
+                    .orElseGet(() -> new AppUser(0, "Application Admin", null,
+                            UserRole.ADMIN, true));
+            Optional<QueueToken> current = queueService.currentForStaff(admin);
+            return new OperatorData(services, status, admin, current);
+        }, data -> {
+            operatorServicePicker.setItems(FXCollections.observableArrayList(data.services()));
+            queueTable.setItems(FXCollections.observableArrayList(data.queueStatus()));
+            currentAdmin = data.admin();
+            operatorCurrentToken = data.current().orElse(null);
+
+            if (operatorCurrentToken != null) {
+                data.services().stream()
+                        .filter(service -> service.id() == operatorCurrentToken.service().id())
+                        .findFirst().ifPresent(operatorServicePicker::setValue);
+            }
+            if (operatorServicePicker.getValue() == null && !data.services().isEmpty()) {
+                operatorServicePicker.setValue(data.services().getFirst());
+            }
+            if (data.services().isEmpty()) {
+                operatorMessageLabel.setText("No active services are available.");
+            } else if (currentAdmin.id() == 0) {
+                operatorMessageLabel.setText("Using the application admin access for this local dashboard.");
+            } else {
+                operatorMessageLabel.setText("Using admin account: " + currentAdmin.name() + ".");
+            }
+            updateOperatorCurrentCustomer();
+            updateOperatorActionState();
+        }, failure -> {
+            operatorMessageLabel.setText(message(failure));
+            advanceQueueButton.setDisable(true);
+        });
+    }
+
+    private void advanceQueue() {
+        ServiceItem service = operatorServicePicker.getValue();
+        if (currentAdmin == null || service == null) {
+            return;
+        }
+        advanceQueueButton.setDisable(true);
+        operatorMessageLabel.setText("Updating the queue...");
+        runAsync(() -> {
+            QueueAdvanceResult result = queueService.advanceQueue(currentAdmin, service.id(), "Counter 1");
+            return new OperatorAdvanceData(result, queueService.overview());
+        }, data -> {
+            operatorCurrentToken = data.result().nextToken().orElse(null);
+            queueTable.setItems(FXCollections.observableArrayList(data.queueStatus()));
+            if (data.result().nextToken().isPresent()) {
+                QueueToken next = data.result().nextToken().get();
+                String completed = data.result().completedToken()
+                        .map(token -> "Completed " + token.tokenNumber() + ". ")
+                        .orElse("");
+                operatorMessageLabel.setText(completed + "Now serving " + next.tokenNumber()
+                        + " - " + next.userName() + ".");
+            } else if (data.result().completedToken().isPresent()) {
+                operatorMessageLabel.setText("Service completed for "
+                        + data.result().completedToken().get().tokenNumber() + ". No customers are waiting.");
+            } else {
+                operatorMessageLabel.setText("There are no customers waiting for this service.");
+            }
+            updateOperatorCurrentCustomer();
+            updateOperatorActionState();
+        }, failure -> {
+            operatorMessageLabel.setText(message(failure));
+            updateOperatorActionState();
+        });
+    }
+
+    private void updateOperatorCurrentCustomer() {
+        if (operatorCurrentToken == null) {
+            nowServingLabel.setText("No customer is currently assigned to you.");
+        } else {
+            nowServingLabel.setText(operatorCurrentToken.tokenNumber() + " - "
+                    + operatorCurrentToken.userName() + " (" + operatorCurrentToken.service().name() + ")");
+        }
+    }
+
+    private void updateOperatorActionState() {
+        if (advanceQueueButton == null) {
+            return;
+        }
+        ServiceItem selected = operatorServicePicker.getValue();
+        boolean activeOnAnotherService = operatorCurrentToken != null && selected != null
+                && operatorCurrentToken.service().id() != selected.id();
+        advanceQueueButton.setText(operatorCurrentToken == null
+                ? "Serve Next Customer" : "Complete Service & Serve Next");
+        advanceQueueButton.setDisable(currentAdmin == null || selected == null
+                || activeOnAnotherService);
+        if (activeOnAnotherService) {
+            operatorMessageLabel.setText("Complete the active customer for "
+                    + operatorCurrentToken.service().name() + " before selecting another service.");
+        }
     }
 
     private void joinQueue() {
@@ -434,6 +594,13 @@ public final class KioskController {
     }
 
     private record KioskData(List<ServiceItem> services, List<ServiceQueueSnapshot> queueStatus) {
+    }
+
+    private record OperatorData(List<ServiceItem> services, List<ServiceQueueSnapshot> queueStatus,
+                                AppUser admin, Optional<QueueToken> current) {
+    }
+
+    private record OperatorAdvanceData(QueueAdvanceResult result, List<ServiceQueueSnapshot> queueStatus) {
     }
 
     private static final class ColumnConstraintsSupport {

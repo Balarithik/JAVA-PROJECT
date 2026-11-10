@@ -4,6 +4,7 @@ import com.smartqueue.database.DatabaseInitializer;
 import com.smartqueue.database.DatabaseManager;
 import com.smartqueue.model.AppUser;
 import com.smartqueue.model.AnalyticsSummary;
+import com.smartqueue.model.QueueAdvanceResult;
 import com.smartqueue.model.QueueStatus;
 import com.smartqueue.model.QueueToken;
 import com.smartqueue.model.UserRole;
@@ -170,6 +171,44 @@ final class QueueServiceTest {
         } finally {
             workers.shutdownNow();
         }
+    }
+
+    @Test
+    void adminCanCompleteCurrentServiceAndAutomaticallyServeNextCustomer() throws Exception {
+        AppUser admin = createPrivilegedUser("queue-admin@example.com", "Queue Admin", UserRole.ADMIN);
+        AppUser firstCustomer = createGuest("First Customer");
+        AppUser secondCustomer = createGuest("Second Customer");
+        QueueToken first = queueService.join(firstCustomer, serviceId);
+        QueueToken second = queueService.join(secondCustomer, serviceId);
+
+        QueueAdvanceResult firstAdvance = queueService.advanceQueue(admin, serviceId, "Counter 1");
+        assertTrue(firstAdvance.completedToken().isEmpty());
+        assertEquals(first.id(), firstAdvance.nextToken().orElseThrow().id());
+        assertEquals(QueueStatus.SERVING, firstAdvance.nextToken().orElseThrow().status());
+
+        QueueAdvanceResult secondAdvance = queueService.advanceQueue(admin, serviceId, "Counter 1");
+        assertEquals(first.id(), secondAdvance.completedToken().orElseThrow().id());
+        assertEquals(QueueStatus.COMPLETED, secondAdvance.completedToken().orElseThrow().status());
+        assertEquals(second.id(), secondAdvance.nextToken().orElseThrow().id());
+        assertEquals(QueueStatus.SERVING, secondAdvance.nextToken().orElseThrow().status());
+
+        QueueAdvanceResult finalAdvance = queueService.advanceQueue(admin, serviceId, "Counter 1");
+        assertEquals(second.id(), finalAdvance.completedToken().orElseThrow().id());
+        assertTrue(finalAdvance.nextToken().isEmpty());
+        assertTrue(queueService.currentForStaff(admin).isEmpty());
+    }
+
+    @Test
+    void applicationAdminCanServeQueueWithoutPersistedAdminAccount() throws Exception {
+        AppUser applicationAdmin = new AppUser(0, "Application Admin", null, UserRole.ADMIN, true);
+        AppUser customer = createGuest("Application Queue Customer");
+        QueueToken waiting = queueService.join(customer, serviceId);
+
+        QueueAdvanceResult result = queueService.advanceQueue(applicationAdmin, serviceId, "Counter 1");
+
+        assertEquals(waiting.id(), result.nextToken().orElseThrow().id());
+        assertEquals(QueueStatus.SERVING, result.nextToken().orElseThrow().status());
+        assertTrue(queueService.currentForStaff(applicationAdmin).isPresent());
     }
 
     @Test

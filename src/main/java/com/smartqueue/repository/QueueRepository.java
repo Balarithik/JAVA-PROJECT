@@ -86,11 +86,19 @@ public final class QueueRepository {
     }
 
     public Optional<QueueToken> findCurrentForStaff(long staffId) throws SQLException {
-        String sql = TOKEN_SELECT + "WHERE q.served_by_id=? AND q.status IN ('CALLED','SERVING','SKIPPED') "
+        try (Connection connection = databaseManager.openConnection()) {
+            return findCurrentForStaff(connection, staffId);
+        }
+    }
+
+    public Optional<QueueToken> findCurrentForStaff(Connection connection, long staffId) throws SQLException {
+        String staffFilter = staffId == 0 ? "q.served_by_id IS NULL" : "q.served_by_id=?";
+        String sql = TOKEN_SELECT + "WHERE " + staffFilter + " AND q.status IN ('CALLED','SERVING') "
                 + "ORDER BY q.called_at DESC LIMIT 1";
-        try (Connection connection = databaseManager.openConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, staffId);
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            if (staffId != 0) {
+                statement.setLong(1, staffId);
+            }
             try (ResultSet result = statement.executeQuery()) {
                 return result.next() ? Optional.of(mapToken(result)) : Optional.empty();
             }
@@ -191,7 +199,11 @@ public final class QueueRepository {
                         + "WHERE id=? AND status='WAITING'")) {
             statement.setString(1, Instant.now().toString());
             statement.setString(2, counter);
-            statement.setLong(3, staffId);
+            if (staffId == 0) {
+                statement.setNull(3, java.sql.Types.INTEGER);
+            } else {
+                statement.setLong(3, staffId);
+            }
             statement.setLong(4, tokenId);
             if (statement.executeUpdate() != 1) {
                 throw new SQLException("The next waiting token was claimed by another action.");

@@ -36,6 +36,16 @@ public final class UserRepository {
         }
     }
 
+    public Optional<AppUser> findFirstActiveAdmin() throws SQLException {
+        String sql = "SELECT id,name,age,role,is_active FROM accounts_user "
+                + "WHERE role='ADMIN' AND is_active=1 ORDER BY id LIMIT 1";
+        try (Connection connection = databaseManager.openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet result = statement.executeQuery()) {
+            return result.next() ? Optional.of(map(result)) : Optional.empty();
+        }
+    }
+
     public AppUser createGuest(Connection connection, String name, int age) throws SQLException {
         String legacyEmail = "guest-" + UUID.randomUUID() + "@guest.invalid";
         String now = Instant.now().toString();
