@@ -150,6 +150,20 @@ final class QueueServiceTest {
     }
 
     @Test
+    void staffCannotTransitionAnotherOperatorsToken() throws Exception {
+        AppUser customer = createGuest("Assigned Customer");
+        AppUser assignedStaff = createPrivilegedUser("assigned@example.com", "Assigned Staff", UserRole.STAFF);
+        AppUser otherStaff = createPrivilegedUser("other@example.com", "Other Staff", UserRole.STAFF);
+        QueueToken called = queueService.join(customer, serviceId);
+        QueueToken claimed = queueService.callNext(assignedStaff, serviceId, "Counter 1").orElseThrow();
+
+        assertEquals(called.id(), claimed.id());
+        assertThrows(IllegalStateException.class, () -> queueService.startServing(otherStaff, claimed.id()));
+        assertEquals(QueueStatus.CALLED, queueService.activeToken(customer).orElseThrow().status());
+        assertEquals(QueueStatus.SERVING, queueService.startServing(assignedStaff, claimed.id()).status());
+    }
+
+    @Test
     void concurrentCallNextClaimsDistinctFifoTokens() throws Exception {
         AppUser firstCustomer = createGuest("Customer One");
         AppUser secondCustomer = createGuest("Customer Two");

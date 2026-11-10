@@ -63,6 +63,59 @@ public final class ServiceRepository {
         }
     }
 
+    public ServiceItem create(String name, String prefix, String description, int averageMinutes)
+            throws SQLException {
+        String now = java.time.Instant.now().toString();
+        return databaseManager.inWriteTransaction(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "INSERT INTO services_service(name,prefix,description,average_service_time,is_active,created_at,updated_at) "
+                            + "VALUES(?,?,?,?,1,?,?)", java.sql.Statement.RETURN_GENERATED_KEYS)) {
+                statement.setString(1, name.trim());
+                statement.setString(2, prefix.trim().toUpperCase(java.util.Locale.ROOT));
+                statement.setString(3, description == null ? "" : description.trim());
+                statement.setInt(4, averageMinutes);
+                statement.setString(5, now);
+                statement.setString(6, now);
+                statement.executeUpdate();
+                try (ResultSet keys = statement.getGeneratedKeys()) {
+                    if (!keys.next()) {
+                        throw new SQLException("The database did not return the new service id.");
+                    }
+                    return findById(connection, keys.getLong(1))
+                            .orElseThrow(() -> new SQLException("The newly created service could not be loaded."));
+                }
+            }
+        });
+    }
+
+    public void setActive(long serviceId, boolean active) throws SQLException {
+        databaseManager.inWriteTransaction(connection -> {
+            if (!active) {
+                try (PreparedStatement check = connection.prepareStatement(
+                        "SELECT COUNT(*) FROM queues_queuetoken WHERE service_id=? "
+                                + "AND status IN ('WAITING','CALLED','SERVING')")) {
+                    check.setLong(1, serviceId);
+                    try (ResultSet result = check.executeQuery()) {
+                        result.next();
+                        if (result.getInt(1) > 0) {
+                            throw new IllegalStateException("Complete or cancel all active tokens before deactivating this service.");
+                        }
+                    }
+                }
+            }
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "UPDATE services_service SET is_active=?,updated_at=? WHERE id=?")) {
+                statement.setInt(1, active ? 1 : 0);
+                statement.setString(2, java.time.Instant.now().toString());
+                statement.setLong(3, serviceId);
+                if (statement.executeUpdate() != 1) {
+                    throw new IllegalArgumentException("Service was not found.");
+                }
+            }
+            return null;
+        });
+    }
+
     private ServiceItem map(ResultSet result) throws SQLException {
         return new ServiceItem(result.getLong("id"), result.getString("name"), result.getString("prefix"),
                 result.getString("description"), result.getInt("average_service_time"),
