@@ -29,9 +29,9 @@ public final class AnalyticsService {
         }
         try (Connection connection = databaseManager.openConnection()) {
             return new AnalyticsSummary(
-                    query(connection, "SELECT s.name,CAST(AVG((julianday(q.completed_at)-julianday(q.joined_at))*1440) AS INTEGER) "
+                    query(connection, "SELECT s.name,CAST(AVG((julianday(q.called_at)-julianday(q.joined_at))*1440) AS INTEGER) "
                                     + "FROM queues_queuetoken q JOIN services_service s ON s.id=q.service_id "
-                                    + "WHERE q.status='COMPLETED' GROUP BY s.id,s.name ORDER BY s.name"),
+                                    + "WHERE q.status='COMPLETED' AND q.called_at IS NOT NULL GROUP BY s.id,s.name ORDER BY s.name"),
                     query(connection, "SELECT date(completed_at),COUNT(*) FROM queues_queuetoken "
                                     + "WHERE status='COMPLETED' GROUP BY date(completed_at) ORDER BY date(completed_at) DESC LIMIT 7"),
                     query(connection, "SELECT CAST(strftime('%H',joined_at) AS INTEGER),COUNT(*) FROM queues_queuetoken "

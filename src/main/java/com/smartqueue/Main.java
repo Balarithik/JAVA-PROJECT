@@ -4,6 +4,8 @@ import com.smartqueue.controller.KioskController;
 import com.smartqueue.database.DatabaseInitializer;
 import com.smartqueue.database.DatabaseManager;
 import com.smartqueue.seed.DemoDataSeeder;
+import com.smartqueue.repository.UserRepository;
+import com.smartqueue.service.AuthService;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -21,10 +23,11 @@ public final class Main extends Application {
         try {
             new DatabaseInitializer(databaseManager).initialize();
             new DemoDataSeeder(databaseManager).seed();
+            new AuthService(new UserRepository(databaseManager)).bootstrapAdministratorFromEnvironment();
         } catch (SQLException ex) {
             throw new IllegalStateException("Unable to initialize the Smart Queue database.", ex);
         } catch (Exception ex) {
-            throw new IllegalStateException("Unable to seed the default services for the queue kiosk.", ex);
+            throw new IllegalStateException("Unable to seed application data or bootstrap the administrator account.", ex);
         }
 
         FXMLLoader loader = new FXMLLoader(Main.class.getResource("/fxml/main.fxml"));

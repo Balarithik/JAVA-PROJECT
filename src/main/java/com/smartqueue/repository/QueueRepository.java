@@ -177,6 +177,23 @@ public final class QueueRepository {
         }
     }
 
+    public List<QueueToken> operationalQueue(long serviceId) throws SQLException {
+        String sql = TOKEN_SELECT + "WHERE q.service_id=? AND q.status IN ('WAITING','CALLED','SERVING','SKIPPED') "
+                + "ORDER BY CASE q.status WHEN 'SERVING' THEN 0 WHEN 'CALLED' THEN 1 "
+                + "WHEN 'WAITING' THEN 2 ELSE 3 END,q.joined_at,q.id";
+        try (Connection connection = databaseManager.openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, serviceId);
+            try (ResultSet result = statement.executeQuery()) {
+                List<QueueToken> tokens = new ArrayList<>();
+                while (result.next()) {
+                    tokens.add(mapToken(result));
+                }
+                return tokens;
+            }
+        }
+    }
+
     public Optional<QueueToken> claimNext(Connection connection, Long serviceId, long staffId, String counter)
             throws SQLException {
         String selectSql = "SELECT id FROM queues_queuetoken WHERE status='WAITING' "
@@ -228,6 +245,9 @@ public final class QueueRepository {
             sql.append(",counter_number=?");
         }
         sql.append(" WHERE id=? AND status IN (").append(expected).append(')');
+        if (staffId > 0) {
+            sql.append(" AND served_by_id=?");
+        }
 
         try (PreparedStatement statement = connection.prepareStatement(sql.toString())) {
             int parameter = 1;
@@ -240,7 +260,10 @@ public final class QueueRepository {
             if (target == QueueStatus.CALLED && counter != null && !counter.isBlank()) {
                 statement.setString(parameter++, counter);
             }
-            statement.setLong(parameter, tokenId);
+            statement.setLong(parameter++, tokenId);
+            if (staffId > 0) {
+                statement.setLong(parameter, staffId);
+            }
             if (statement.executeUpdate() != 1) {
                 throw new IllegalStateException("This token cannot transition to " + target + " from its current status.");
             }
@@ -257,6 +280,18 @@ public final class QueueRepository {
             return transition(connection, tokenId, staffId, target, allowed, counter);
         }
         return token;
+    }
+
+    public int countActiveTokensForStaff(long staffId) throws SQLException {
+        try (Connection connection = databaseManager.openConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT COUNT(*) FROM queues_queuetoken WHERE served_by_id=? AND status IN ('CALLED','SERVING')")) {
+            statement.setLong(1, staffId);
+            try (ResultSet result = statement.executeQuery()) {
+                result.next();
+                return result.getInt(1);
+            }
+        }
     }
 
     public int countActiveTokens() throws SQLException {
